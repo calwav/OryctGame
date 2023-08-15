@@ -1,63 +1,82 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
- 
+
 public class PlayerMovement : MonoBehaviour
 {
     private SpriteRenderer sprite;
     private Animator anim;
     private bool isFacingRight = true;
     private float dirX;
- 
+
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float jumpForce = 14f;
     [SerializeField] private Transform groundCheck;
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private Rigidbody2D rb;
- 
+
     private enum MovementState { idle, running, jumping, falling }
- 
+
     [SerializeField] private AudioSource jumpSoundEffect;
- 
+
+    private bool isGrounded;
+    private int remainingJumps;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         sprite = GetComponent<SpriteRenderer>();
         anim = GetComponent<Animator>();
- 
+
         rb.freezeRotation = true;
+
+        remainingJumps = 1;
     }
- 
+
     private void Update()
     {
         dirX = Input.GetAxisRaw("Horizontal");
- 
-        if (Input.GetButtonDown("Jump") && IsGrounded())
+
+        isGrounded = IsGrounded();
+
+        if (isGrounded)
         {
-            rb.velocity = new Vector2(rb.velocity.x, jumpForce);
-            jumpSoundEffect.Play();
+            remainingJumps = 1;
         }
- 
+
+        if (Input.GetButtonDown("Jump"))
+        {
+            if (isGrounded || remainingJumps > 0)
+            {
+                if (!isGrounded)
+                {
+                    remainingJumps--;
+                }
+                rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+                jumpSoundEffect.Play();
+            }
+        }
+
         if (Input.GetButtonUp("Jump") && rb.velocity.y > 0f)
         {
             rb.velocity = new Vector2(rb.velocity.x, rb.velocity.y * 0.5f);
         }
- 
+
         Jump();
- 
+
         UpdateAnimationState();
     }
- 
+
     private void FixedUpdate()
     {
         rb.velocity = new Vector2(dirX * moveSpeed, rb.velocity.y);
     }
- 
+
     private bool IsGrounded()
     {
         return Physics2D.OverlapCircle(groundCheck.position, 0.4f, groundLayer);
     }
- 
+
     private void Jump()
     {
         if (isFacingRight && dirX < 0f || isFacingRight && dirX > 0f)
@@ -68,11 +87,11 @@ public class PlayerMovement : MonoBehaviour
             transform.localScale = localScale;
         }
     }
- 
+
     private void UpdateAnimationState()
     {
         MovementState state;
- 
+
         if (dirX > 0f)
         {
             state = MovementState.running;
@@ -87,7 +106,7 @@ public class PlayerMovement : MonoBehaviour
         {
             state = MovementState.idle;
         }
- 
+
         if (rb.velocity.y > 0.1f)
         {
             state = MovementState.jumping;
@@ -96,7 +115,7 @@ public class PlayerMovement : MonoBehaviour
         {
             state = MovementState.falling;
         }
- 
+
         anim.SetInteger("state", (int)state);
     }
 }
